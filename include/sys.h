@@ -3,6 +3,7 @@
 #define __SYS_H
 typedef __SIZE_TYPE__ size_t;
 typedef __INTPTR_TYPE__ ssize_t;
+extern size_t strlen(const char *str);
 #ifdef _WIN32
 typedef unsigned long int flag_t;
 typedef __INTPTR_TYPE__ fd_t;
@@ -21,7 +22,6 @@ typedef int fd_t;
 typedef int flag_t;
 extern fd_t open(const char *pathname, flag_t flags, ...);
 #endif
-extern size_t strlen(const char *str);
 extern ssize_t read(int fd, void *buf, size_t count);
 extern ssize_t write(int fd, const void *buf, size_t count);
 extern int close(fd_t fd);
