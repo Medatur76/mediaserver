@@ -12,12 +12,16 @@ void _start(void) {
 #ifdef _WIN32
 #include <io.h>
 #endif
+typedef int fd_t;
 #define exit(x) return x
 int main(void) {
 #endif
-    int fd = open("test.txt", O_RDONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    fd_t fd = open("test.txt", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fd < 0) exit(1);
-    fd = close(fd);
-    if (fd < 0) exit(2);
+    write(1, "Hello, World!\r\n", 15);
+    ssize_t out = write(fd, "Hello, World!\r\n", 15);
+    if (out == -1) exit(2);
+    out = close(fd);
+    if (out) exit(3);
     exit(0);
 }

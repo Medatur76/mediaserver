@@ -17,15 +17,25 @@ static inline __attribute__((always_inline, gnu_inline)) fd_t open(const char *p
     while ((*dst++ = *src++));
     return _open(wpath, flags, __builtin_va_arg_pack());
 }
+extern int _write(int fd, const void *buf, size_t count, ssize_t *out);
+static inline ssize_t write(fd_t fd, const void *buf, size_t count) {
+    ssize_t out;
+    if (_write(fd, buf, count, &out)) return out;
+    return -1;
+}
+extern int _read(fd_t fd, void *buf, size_t count, ssize_t *out);
+static inline ssize_t read(fd_t fd, void *buf, size_t count) {
+    ssize_t out;
+    if (_read(fd, buf, count, &out)) return out;
+    return -1;
+}
 #else
 typedef int fd_t;
 typedef int flag_t;
 extern fd_t open(const char *pathname, flag_t flags, ...);
+extern ssize_t write(fd_t fd, const void *buf, size_t count);
+extern ssize_t read(fd_t fd, void *buf, size_t count);
 #endif
-extern ssize_t read(int fd, void *buf, size_t count);
-extern ssize_t write(int fd, const void *buf, size_t count);
 extern int close(fd_t fd);
-extern signed int fork(void);
-__attribute__((noreturn))
-extern void exit(int status);
+extern __attribute__((noreturn)) void exit(int status);
 #endif

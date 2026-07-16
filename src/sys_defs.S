@@ -4,10 +4,15 @@
 .intel_syntax noprefix
 .section .text
 .extern CreateFileW
+.extern GetStdHandle
+.extern WriteFile
+.extern ReadFile
 .extern CloseHandle
 .extern ExitProcess
 .global strlen
 .global _open
+.global _write
+.global _read
 .global close
 .global exit
 strlen:
@@ -61,8 +66,51 @@ _open_cd_f:
     call CreateFileW
     add rsp, 72
     ret
+_write:
+    cmp rcx, 1
+    jne _write_1
+    mov ecx, -11
+    sub rsp, 40
+    call GetStdHandle
+    add rsp, 40
+    mov rcx, rax
+    jmp _write_f
+_write_1:
+    cmp rcx, 2
+    jne _write_f
+    mov ecx, -12
+    sub rsp, 40
+    call GetStdHandle
+    add rsp, 40
+    mov rcx, rax
+_write_f:
+    sub rsp, 40
+    mov dword ptr [rsp + 32], 0x00
+    call WriteFile
+    add rsp, 40
+    ret
+_read:
+    test rcx, rcx
+    jnz _read_f
+    mov ecx, -10
+    sub rsp, 40
+    call GetStdHandle
+    add rsp, 40
+    mov rcx, rax
+_read_f:
+    sub rsp, 40
+    mov dword ptr [rsp + 32], 0x00
+    call ReadFile
+    add rsp, 40
+    ret
 close:
-    jmp CloseHandle
+    sub rsp, 40
+    call CloseHandle
+    add rsp, 40
+    //This bit was AI sadly
+    test eax, eax
+    setz al
+    movzx eax, al
     ret
 exit:
     jmp ExitProcess
@@ -71,6 +119,8 @@ exit:
 .intel_syntax noprefix
 .globl strlen
 .globl open
+.globl write
+.globl read
 .globl close
 .globl exit
 .section .text
@@ -85,6 +135,14 @@ strlen_f:
     ret
 open:
     mov rax, 2
+    syscall
+    ret
+write:
+    mov rax, 1
+    syscall
+    ret
+read:
+    xor rax, rax
     syscall
     ret
 close:
