@@ -4,46 +4,18 @@
 #include "fcntl.h"
 #ifndef __SYS_H
 #define __SYS_H
-#if defined(__x86_64__)
-#define SYS_open 2
-#define SYS_write 1
-#define SYS_read 0
-#define SYS_fork 57
-#define SYS_wait 61
-#define SYS_close 3
-#define SYS_mmap 9
-#define SYS_exit 60
-#define syscall "syscall"
-#elif defined(__i386__)
-#define SYS_open 5
-#define SYS_write 4
-#define SYS_read 3
-#define SYS_fork 2
-#define SYS_wait 7
-#define SYS_close 6
-#define SYS_mmap 192
-#define SYS_exit 1
-#define syscall "int 0x80"
-#elif defined(__aarch64__)
-#define SYS_open 56
-#define SYS_write 64
-#define SYS_read 63
-#define SYS_fork 220
-#define SYS_wait 95
-#define SYS_close 57
-#define SYS_mmap 222
-#define SYS_exit 93
-#define syscall "svc #0"
-#elif defined(__arm__)
-#elif defined(__riscv)
-#endif
 #define main progMain
+#if defined(__i386__)
+#define _noStack(x) __attribute__((regparm(x)))
+#else
+#define _noStack(x)
+#endif
 typedef __SIZE_TYPE__ size_t;
 typedef __INTPTR_TYPE__ ssize_t;
 //TODO Force __stdcall on Win32 systems (not Win64)
 typedef __INT32_TYPE__ (*ThreadFunc)(void*);
-extern size_t strlen(const char *str);
-extern __attribute__((noreturn)) void exit(int status);
+extern _noStack(1) size_t strlen(const char *str);
+extern __attribute__((noreturn)) _noStack(1) void exit(int status);
 #ifdef _WIN32
 typedef unsigned long int flag_t;
 typedef __INTPTR_TYPE__ fd_t;
@@ -74,14 +46,14 @@ extern signed int waitthread(fd_t thread);
 #else
 typedef int fd_t;
 typedef int flag_t;
-extern fd_t _open(const char *pathname, flag_t flags, int mode);
+extern _noStack(3) fd_t _open(const char *pathname, flag_t flags, int mode);
 //Next two lines ai
 #define OPEN_GET(_1,_2,_3,NAME,...) NAME
 #define open(...) OPEN_GET(__VA_ARGS__, open3, open2)(__VA_ARGS__)
 #define open2(path, flags) _open(path, flags, 0)
 #define open3(path, flags, mode) _open(path, flags, mode)
-extern ssize_t write(fd_t fd, const void *buf, size_t count);
-extern ssize_t read(fd_t fd, void *buf, size_t count);
+extern _noStack(3) ssize_t write(fd_t fd, const void *buf, size_t count);
+extern _noStack(3) ssize_t read(fd_t fd, void *buf, size_t count);
 extern signed int _fork(void);
 static inline unsigned int thread(ThreadFunc func, void *param) {
     //signal(SIGCHLD, SIG_IGN);
@@ -90,7 +62,7 @@ static inline unsigned int thread(ThreadFunc func, void *param) {
     if (!pid) exit(func(param));
     return pid;
 }
-extern void _waitpid(fd_t fd, int *out);
+extern _noStack(2) void _waitpid(fd_t fd, int *out);
 static inline int waitthread(fd_t fd) {
     int out;
     _waitpid(fd, &out);
@@ -98,7 +70,7 @@ static inline int waitthread(fd_t fd) {
     return out;
 }
 #endif
-extern int close(fd_t fd);
+extern int _noStack(1) close(fd_t fd);
 typedef struct _socket {
     fd_t socketFd;
     struct sockaddr {
@@ -107,9 +79,9 @@ typedef struct _socket {
     } address;
 } socket;
 #endif
-extern void *malloc(size_t size);
+extern _noStack(1) void *malloc(size_t size);
 //Automatically opens and listens to a TCP socket at 127.0.0.1:port. Max 50 connections
-extern socket opensocket(__UINT16_TYPE__ port);
-extern fd_t accept(socket);
+extern _noStack(1) socket opensocket(__UINT16_TYPE__ port);
+extern _noStack(1) fd_t accept(socket);
 
 int main(void);

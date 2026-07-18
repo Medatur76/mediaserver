@@ -319,6 +319,7 @@ _open:
     mov x1, x0
     mov x0, #-100
 #elif defined(__i386__)
+    push arg0Reg
     mov arg0Reg, arg1Reg
     mov arg1Reg, arg2Reg
     mov arg2Reg, arg0Reg
@@ -326,9 +327,13 @@ _open:
 #endif
     mov accReg, SYS_open
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 write:
 #if defined(__i386__)
+    push arg0Reg
     mov arg0Reg, arg1Reg
     mov arg1Reg, arg2Reg
     mov arg2Reg, arg0Reg
@@ -336,9 +341,13 @@ write:
 #endif
     mov accReg, SYS_write
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 read:
 #if defined(__i386__)
+    push arg0Reg
     mov arg0Reg, arg1Reg
     mov arg1Reg, arg2Reg
     mov arg2Reg, arg0Reg
@@ -346,9 +355,14 @@ read:
 #endif
     mov accReg, SYS_read
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 _fork:
-#if defined(__aarch64__)
+#if defined(__i386__)
+    push arg0Reg
+#elif defined(__aarch64__)
     mov x0, #17
     mov x1, #0
     mov x2, #0
@@ -357,8 +371,14 @@ _fork:
 #endif
     mov accReg, SYS_fork
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 _waitpid:
+#if defined(__i386__)
+    push arg0Reg
+#endif
     //This need to be review because I never use &out
     zero(arg3Reg)
     zero(arg1Reg)
@@ -373,16 +393,24 @@ _waitpid:
     zero(arg2Reg)
     mov accReg, SYS_wait
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 close:
 #if defined(__i386__)
+    push arg0Reg
     mov arg0Reg, accReg
 #endif
     mov accReg, SYS_close
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 malloc:
 #if defined(__i386__)
+    push arg0Reg
     mov arg1Reg, accReg
 #else
     mov arg1Reg, arg0Reg
@@ -394,6 +422,9 @@ malloc:
     mov arg5Reg, 0
     mov accReg, SYS_mmap
     syscall
+#if defined(__i386__)
+    pop arg0Reg
+#endif
     ret
 exit:
 #if defined(__i386__)

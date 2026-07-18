@@ -13,7 +13,8 @@ int consoleHandler(void *param) {
             break;
         }
     }
-    write(file, "1\r\nchild exited safely", strlen("0\r\nchild exited safely"));
+    char *log = "0\r\nchild exited safely";
+    write(file, log, strlen(log));
     close(file);
     write(1, "child exiting\n", 14);
     return 0;
