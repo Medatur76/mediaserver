@@ -1,6 +1,5 @@
 #ifdef COMPRESSED
 #include "sys.h"
-void _start(void) {
 #else
 //Everything defined here (begining with S_) was taking from the GNU C Library's POSIX Standard: 6.5 File Control Operations	<fcntl.h>
 # define S_IRUSR	0x0400          /* Read by owner.  */
@@ -13,15 +12,14 @@ void _start(void) {
 #include <io.h>
 #endif
 typedef int fd_t;
-#define exit(x) return x
-int main(void) {
 #endif
+int main(void) {
     fd_t fd = open("test.txt", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-    if (fd < 0) exit(1);
+    if (fd < 0) return 1;
     write(1, "Hello, World!\r\n", 15);
     ssize_t out = write(fd, "Hello, World!\r\n", 15);
-    if (out == -1) exit(2);
+    if (out == -1) return 2;
     out = close(fd);
-    if (out) exit(3);
-    exit(0);
+    if (out) return 3;
+    return 0;
 }

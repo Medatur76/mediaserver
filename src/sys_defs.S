@@ -7,14 +7,24 @@
 .extern GetStdHandle
 .extern WriteFile
 .extern ReadFile
+.extern CreateThread
+.extern WaitForSingleObject
 .extern CloseHandle
 .extern ExitProcess
+.extern main
+.global __main
 .global strlen
 .global _open
 .global _write
 .global _read
+.global thread
+.global waitthread
 .global close
+.globl malloc
 .global exit
+.global _start
+__main:
+    ret
 strlen:
     xor rax, rax
 strlen_1:
@@ -103,6 +113,44 @@ _read_f:
     call ReadFile
     add rsp, 40
     ret
+thread:
+    sub rsp, 48
+    mov r8, rcx
+    mov r9, rdx
+    xor rcx, rcx
+    xor rdx, rdx
+    mov qword ptr [rsp + 32], 0x00
+    mov qword ptr [rsp + 40], 0x00
+    call CreateThread
+    add rsp, 48
+    ret
+waitthread:
+    sub rsp, 32
+    mov rdx, -1
+    call WaitForSingleObject
+    add rsp, 32
+    ret
+/*opensocket:
+    sub rsp, 32
+    mov rcx, 2
+    mov rdi, 1
+    mov r8, 6
+    call socket
+    add rsp, 32
+    mov r10, rax
+    //error check
+    sub rsp, 40
+    mov rcx, rax
+    mov rdi, 0xFFFF
+    mov r8, 4
+    mov qword ptr [rsp + 32], 0x04
+    mov qword ptr [rsp + 40], 0x01
+    mov r9, [rsp + 40]
+    call setsockopt
+    add rsp, 40
+    //error check
+    sub rsp, 32
+    mov rcx, r10*/
 close:
     sub rsp, 40
     call CloseHandle
@@ -112,17 +160,40 @@ close:
     setz al
     movzx eax, al
     ret
+malloc:
+    sub rsp, 32
+    call GetProcessHeap
+    add rsp, 32
+    //error check
+    sub rsp, 32
+    mov r8, rcx
+    mov rcx, rax
+    xor rdx, rdx
+    call HeapAlloc
+    add rsp, 32
+    ret
 exit:
     jmp ExitProcess
     ud2
+_start:
+    sub rsp, 40
+    call main
+    add rsp, 40
+    mov ecx, eax
+    jmp exit 
 #elif defined(__x86_64__)
 .intel_syntax noprefix
+.extern main
 .globl strlen
 .globl open
 .globl write
 .globl read
+.globl _fork
+.globl _waitpid
 .globl close
+.globl malloc
 .globl exit
+.globl _start
 .section .text
 strlen:
     xor rax, rax
@@ -145,19 +216,70 @@ read:
     xor rax, rax
     syscall
     ret
+_fork:
+    mov rax, 57
+    syscall
+    ret
+_waitpid:
+    mov rax, 61
+    xor rdx, rdx
+    xor r10, r10
+    syscall
+    ret
 close:
-    mov rax, 0x39
+    mov rax, 3
+    syscall
+    ret
+malloc:
+    mov rax, 9
+    mov rsi, rdi
+    xor rdi, rdi
+    mov rdx, 0x03
+    mov r10, 0x21
+    mov r8, -1
+    mov r9, 0
     syscall
     ret
 exit:
     mov rax, 60
     syscall
     ud2
+_start:
+    //This would allow for params to be passed but I dont feel like figuring out the windows equivalent just yet cuz yeah suck it :P
+    //mov rdi, [rsp]
+    //lea rsi, [rsp + 8]
+
+    push rbp
+    mov rbp, rsp
+
+    push 0x0A363772
+    mov rax, 0x75746164654d2079
+    push rax
+    mov rax, 0x6220534f4d206874
+    push rax
+    mov rax, 0x697720746c697542
+    push rax
+
+    mov rax, 1
+    mov rdi, 1
+    lea rsi, [rsp]
+    mov rdx, rbp
+    sub rdx, rsp
+    syscall
+  
+    mov rsp, rbp
+    pop rbp
+
+    call main
+    mov edi, eax
+    jmp exit
 #elif defined(__i386__)
+.extern main
 .globl strlen
 .globl open
 .globl close
 .globl exit
+.globl _start
 .section .text
 strlen:
     xor eax, eax
@@ -180,24 +302,41 @@ exit:
     mov eax, #1
     syscall
     ud2
+_start:
+    call main
+    mov ebx, eax
+    jmp exit
 #elif defined(__aarch64__)
+.extern main
 .globl strlen
 .type strlen,%function
 .globl open
 .type open,%function
 .globl close
 .type close,%function
+.globl write
+.type write,%function
+.globl read
+.type read,%function
+.globl _fork
+.type _fork,%function
+.globl _waitpid
+.type _waitpid,%function
+.globl malloc
+.type malloc,%function
 .globl exit
 .type exit,%function
+.globl _start
 .section .text
 strlen:
     mov x1, x0
-    xor x0, x0
+    orr x0, xzr, xzr
 strlen_1:
-    cmp byte ptr [x1 + x0], 0
-    je strlen_f
-    inc x0
-    jmp strlen_1
+    ldrb w2, [x1, x0]
+    cmp w2, #0
+    b.eq strlen_f
+    add x0, x0, 1
+    b strlen_1
 strlen_f:
     ret
 open:
@@ -212,11 +351,51 @@ close:
     mov x8, #57
     svc #0
     ret
+write:
+    mov x8, #64
+    svc #0
+    ret
+read:
+    mov x8, #63
+    svc #0
+    ret
+_fork:
+    mov x8, #220
+    mov x0, #17
+    mov x1, #0
+    mov x2, #0
+    mov x3, #0
+    mov x4, #0
+    svc #0
+    ret
+_waitpid:
+    mov x8, #95
+    mov x1, x0
+    orr x0, xzr, xzr
+    orr x2, xzr, xzr
+    mov x3, #4
+    orr x4, xzr, xzr
+    svc #0
+    ret
+malloc:
+    mov x8, #222
+    mov x1, x0
+    orr x0, xzr, xzr
+    mov x2, 0x03
+    mov x3, 0x21
+    mov x4, -1
+    mov x5, 0
+    svc #0
+    ret
 exit:
     mov x8, #93
     svc #0
-    ud2
+    udf #0
+_start:
+    bl main
+    b exit
 #elif defined(__arm__)
+.extern main
 .global strlen
 .type strlen,%function
 .global open
@@ -225,6 +404,7 @@ exit:
 .type close,%function
 .global exit
 .type exit,%function
+.global _start
 strlen:
     mov r1, r0
     xor r0, r0
@@ -247,12 +427,17 @@ exit:
     mov r7, #1
     svc #0x80
     ud2
+_start:
+    bl main
+    b exit
 #elif defined(__riscv)
 .section .text
+.extern main
 .global strlen
 .global open
 .global close
 .global exit
+.global _start
 strlen:
     mov a1, a0
     xor a0, a0
@@ -275,4 +460,7 @@ exit:
     mov a7, #93
     svc #0x80
     ud2
+_start:
+    call main
+    j exit
 #endif
