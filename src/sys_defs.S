@@ -3,6 +3,7 @@
 .section .text
 .extern progMain
 .globl strlen
+.globl _open
 .globl exit
 .globl close
 .globl malloc
@@ -18,7 +19,6 @@
 .extern CloseHandle
 .extern ExitProcess
 .global __main
-.globl _open
 .globl _write
 .globl _read
 .globl thread
@@ -187,7 +187,6 @@ _start:
     mov rcx, rax
     jmp exit
 #else
-.globl open
 .globl write
 .globl read
 .globl _fork
@@ -195,7 +194,7 @@ _start:
 #if defined(__arm__) || defined(__aarch64__)
 .type strlen,%function
 .type exit,%function
-.type open,%function
+.type _open,%function
 .type write,%function
 .type read,%function
 .type _fork,%function
@@ -292,13 +291,13 @@ _start:
 #endif
 strlen:
 #if defined(__i386__)
+    push arg0Reg
     mov arg0Reg, accReg
 #endif
     zero(accReg)
 strlen_1:
-    //This one is specific, will figure out later
 #if defined(__aarch64__)
-    ldrb w2, [x1, x0]
+    ldrb w2, [x0, x8]
     cmp w2, #0
 #else
     cmp byte ptr [arg0Reg + accReg], 0
@@ -307,8 +306,13 @@ strlen_1:
     increment(accReg)
     jump strlen_1
 strlen_f:
+#if defined(__aarch64__)
+    mov x0, x8
+#elif defined(__i386__)
+    pop arg0Reg
+#endif
     ret
-open:
+_open:
 #if defined(__aarch64__)
     mov x3, x2
     mov x2, x1
@@ -371,6 +375,9 @@ _waitpid:
     syscall
     ret
 close:
+#if defined(__i386__)
+    mov arg0Reg, accReg
+#endif
     mov accReg, SYS_close
     syscall
     ret
@@ -418,7 +425,6 @@ _start:
 smsg:
     .ascii "Built with MOS by Medatur76\n"
 smsg_end:
-
 #if defined(__aarch64__)
     smsg_len = smsg_end - smsg
 #else

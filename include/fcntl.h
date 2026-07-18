@@ -2,9 +2,9 @@
 #ifndef _INC_FCNTL
 #define _INC_FCNTL
 
-# define S_IRUSR	0x0400          /* Read by owner.  */
-# define S_IWUSR	0x0200          /* Write by owner.  */
-# define S_IXUSR	0x0100          /* Execute by owner.  */
+# define S_IRUSR	0400          /* Read by owner.  */
+# define S_IWUSR	0200          /* Write by owner.  */
+# define S_IXUSR	0100          /* Execute by owner.  */
 /* Read, write, and execute by owner.  */
 # define S_IRWXU	(S_IRUSR|S_IWUSR|S_IXUSR)
 
