@@ -1,8 +1,14 @@
 //TODO
 //strlen can be optimized apparently
+.section .text
+.extern progMain
+.globl strlen
+.globl exit
+.globl close
+.globl malloc
+.globl _start
 #if defined(_WIN32)
 .intel_syntax noprefix
-.section .text
 .extern CreateFileW
 .extern GetStdHandle
 .extern WriteFile
@@ -11,18 +17,12 @@
 .extern WaitForSingleObject
 .extern CloseHandle
 .extern ExitProcess
-.extern main
 .global __main
-.global strlen
-.global _open
-.global _write
-.global _read
-.global thread
-.global waitthread
-.global close
-.globl malloc
-.global exit
-.global _start
+.globl _open
+.globl _write
+.globl _read
+.globl thread
+.globl waitthread
 __main:
     ret
 strlen:
@@ -79,7 +79,7 @@ _open_cd_f:
 _write:
     cmp rcx, 1
     jne _write_1
-    mov ecx, -11
+    mov rcx, -11
     sub rsp, 40
     call GetStdHandle
     add rsp, 40
@@ -88,7 +88,7 @@ _write:
 _write_1:
     cmp rcx, 2
     jne _write_f
-    mov ecx, -12
+    mov rcx, -12
     sub rsp, 40
     call GetStdHandle
     add rsp, 40
@@ -176,291 +176,251 @@ exit:
     jmp ExitProcess
     ud2
 _start:
+    mov rcx, 1
+    lea rdx, [rip + smsg]
+    mov r8, smsg_end - smsg
+    xor r9, r9
+    call _write
     sub rsp, 40
-    call main
+    call progMain
     add rsp, 40
-    mov ecx, eax
-    jmp exit 
-#elif defined(__x86_64__)
-.intel_syntax noprefix
-.extern main
-.globl strlen
+    mov rcx, rax
+    jmp exit
+#else
 .globl open
 .globl write
 .globl read
 .globl _fork
 .globl _waitpid
-.globl close
-.globl malloc
-.globl exit
-.globl _start
-.section .text
-strlen:
-    xor rax, rax
-strlen_1:
-    cmp byte ptr [rdi + rax], 0
-    je strlen_f
-    inc rax
-    jmp strlen_1
-strlen_f:
-    ret
-open:
-    mov rax, 2
-    syscall
-    ret
-write:
-    mov rax, 1
-    syscall
-    ret
-read:
-    xor rax, rax
-    syscall
-    ret
-_fork:
-    mov rax, 57
-    syscall
-    ret
-_waitpid:
-    mov rax, 61
-    xor rdx, rdx
-    xor r10, r10
-    syscall
-    ret
-close:
-    mov rax, 3
-    syscall
-    ret
-malloc:
-    mov rax, 9
-    mov rsi, rdi
-    xor rdi, rdi
-    mov rdx, 0x03
-    mov r10, 0x21
-    mov r8, -1
-    mov r9, 0
-    syscall
-    ret
-exit:
-    mov rax, 60
-    syscall
-    ud2
-_start:
-    //This would allow for params to be passed but I dont feel like figuring out the windows equivalent just yet cuz yeah suck it :P
-    //mov rdi, [rsp]
-    //lea rsi, [rsp + 8]
-
-    push rbp
-    mov rbp, rsp
-
-    push 0x0A363772
-    mov rax, 0x75746164654d2079
-    push rax
-    mov rax, 0x6220534f4d206874
-    push rax
-    mov rax, 0x697720746c697542
-    push rax
-
-    mov rax, 1
-    mov rdi, 1
-    lea rsi, [rsp]
-    mov rdx, rbp
-    sub rdx, rsp
-    syscall
-  
-    mov rsp, rbp
-    pop rbp
-
-    call main
-    mov edi, eax
-    jmp exit
-#elif defined(__i386__)
-.extern main
-.globl strlen
-.globl open
-.globl close
-.globl exit
-.globl _start
-.section .text
-strlen:
-    xor eax, eax
-strlen_1:
-    cmp byte ptr [ebx + eax], 0
-    je strlen_f
-    inc eax
-    jmp strlen_1
-strlen_f:
-    ret
-open:
-    mov eax, #5
-    syscall
-    ret
-close:
-    mov eax, #6
-    syscall
-    ret
-exit:
-    mov eax, #1
-    syscall
-    ud2
-_start:
-    call main
-    mov ebx, eax
-    jmp exit
-#elif defined(__aarch64__)
-.extern main
-.globl strlen
+#if defined(__arm__) || defined(__aarch64__)
 .type strlen,%function
-.globl open
-.type open,%function
-.globl close
-.type close,%function
-.globl write
-.type write,%function
-.globl read
-.type read,%function
-.globl _fork
-.type _fork,%function
-.globl _waitpid
-.type _waitpid,%function
-.globl malloc
-.type malloc,%function
-.globl exit
 .type exit,%function
-.globl _start
-.section .text
+.type open,%function
+.type write,%function
+.type read,%function
+.type _fork,%function
+.type _waitpid,%function
+.type close,%function
+.type malloc,%function
+#endif
+#if defined(__x86_64__) || defined(__i386__)
+.intel_syntax noprefix
+#endif
+#if defined(__x86_64__)
+#define accReg rax
+#define arg0Reg rdi
+#define arg1Reg rsi
+#define arg2Reg rdx
+#define arg3Reg r10
+#define arg4Reg r8
+#define arg5Reg r9
+#define stackReg rsp
+#define baseReg rbp
+#define jump jmp
+#define jumpEquals je
+#define zero(x) xor x, x
+#define increment(x) inc x
+#define subtract(x, y) sub x, y
+
+#define SYS_open 2
+#define SYS_write 1
+#define SYS_read 0
+#define SYS_fork 57
+#define SYS_wait 61
+#define SYS_close 3
+#define SYS_mmap 9
+#define SYS_exit 60
+
+#define undefined ud2
+#elif defined(__i386__)
+#define accReg eax
+#define arg0Reg ebx
+#define arg1Reg ecx
+#define arg2Reg edx
+#define arg3Reg esi
+#define arg4Reg edi
+#define arg5Reg ebp
+#define stackReg esp
+#define baseReg ebp
+#define jump jmp
+#define jumpEquals je
+#define zero(x) xor x, x
+#define increment(x) inc x
+#define subtract(x, y) sub x, y
+
+#define SYS_open 5
+#define SYS_write 4
+#define SYS_read 3
+#define SYS_fork 2
+#define SYS_wait 7
+#define SYS_close 6
+#define SYS_mmap 192
+#define SYS_exit 1
+
+#define undefined ud2
+#define syscall int 0x80
+#elif defined(__aarch64__)
+#define accReg x8
+#define arg0Reg x0
+#define arg1Reg x1
+#define arg2Reg x2
+#define arg3Reg x3
+#define arg4Reg x4
+#define arg5Reg x5
+#define stackReg sp
+#define baseReg x29
+#define jump b
+#define call bl
+#define jumpEquals b.eq
+#define zero(x) mov x, xzr
+#define increment(x) adds x, x, 1
+#define subtract(x, y) sub x, x, y
+
+#define SYS_open 56
+#define SYS_write 64
+#define SYS_read 63
+#define SYS_fork 220
+#define SYS_wait 95
+#define SYS_close 57
+#define SYS_mmap 222
+#define SYS_exit 93
+
+#define undefined udf #0
+#define syscall svc #0
+#elif defined(__arm__)
+#elif defined(__riscv)
+#endif
 strlen:
-    mov x1, x0
-    orr x0, xzr, xzr
+#if defined(__i386__)
+    mov arg0Reg, accReg
+#endif
+    zero(accReg)
 strlen_1:
+    //This one is specific, will figure out later
+#if defined(__aarch64__)
     ldrb w2, [x1, x0]
     cmp w2, #0
-    b.eq strlen_f
-    add x0, x0, 1
-    b strlen_1
+#else
+    cmp byte ptr [arg0Reg + accReg], 0
+#endif
+    jumpEquals strlen_f
+    increment(accReg)
+    jump strlen_1
 strlen_f:
     ret
 open:
-    mov x8, #56
+#if defined(__aarch64__)
     mov x3, x2
     mov x2, x1
     mov x1, x0
     mov x0, #-100
-    svc #0
-    ret
-close:
-    mov x8, #57
-    svc #0
+#elif defined(__i386__)
+    mov arg0Reg, arg1Reg
+    mov arg1Reg, arg2Reg
+    mov arg2Reg, arg0Reg
+    mov arg0Reg, accReg
+#endif
+    mov accReg, SYS_open
+    syscall
     ret
 write:
-    mov x8, #64
-    svc #0
+#if defined(__i386__)
+    mov arg0Reg, arg1Reg
+    mov arg1Reg, arg2Reg
+    mov arg2Reg, arg0Reg
+    mov arg0Reg, accReg
+#endif
+    mov accReg, SYS_write
+    syscall
     ret
 read:
-    mov x8, #63
-    svc #0
+#if defined(__i386__)
+    mov arg0Reg, arg1Reg
+    mov arg1Reg, arg2Reg
+    mov arg2Reg, arg0Reg
+    mov arg0Reg, accReg
+#endif
+    mov accReg, SYS_read
+    syscall
     ret
 _fork:
-    mov x8, #220
+#if defined(__aarch64__)
     mov x0, #17
     mov x1, #0
     mov x2, #0
     mov x3, #0
     mov x4, #0
-    svc #0
+#endif
+    mov accReg, SYS_fork
+    syscall
     ret
 _waitpid:
-    mov x8, #95
-    mov x1, x0
-    orr x0, xzr, xzr
-    orr x2, xzr, xzr
-    mov x3, #4
-    orr x4, xzr, xzr
-    svc #0
+    //This need to be review because I never use &out
+    zero(arg3Reg)
+    zero(arg1Reg)
+#if defined(__aarch64__)
+    mov arg1Reg, arg0Reg
+    zero(arg0Reg)
+    zero(arg4Reg)
+    mov arg3Reg, 4
+#elif defined(__i386__)
+    mov arg0Reg, accReg
+#endif
+    zero(arg2Reg)
+    mov accReg, SYS_wait
+    syscall
+    ret
+close:
+    mov accReg, SYS_close
+    syscall
     ret
 malloc:
-    mov x8, #222
-    mov x1, x0
-    orr x0, xzr, xzr
-    mov x2, 0x03
-    mov x3, 0x21
-    mov x4, -1
-    mov x5, 0
-    svc #0
+#if defined(__i386__)
+    mov arg1Reg, accReg
+#else
+    mov arg1Reg, arg0Reg
+#endif
+    zero(arg0Reg)
+    mov arg2Reg, 0x03
+    mov arg3Reg, 0x21
+    mov arg4Reg, -1
+    mov arg5Reg, 0
+    mov accReg, SYS_mmap
+    syscall
     ret
 exit:
-    mov x8, #93
-    svc #0
-    udf #0
+#if defined(__i386__)
+    mov arg0Reg, accReg
+#endif
+    mov accReg, SYS_exit
+    syscall
+    undefined
 _start:
-    bl main
-    b exit
-#elif defined(__arm__)
-.extern main
-.global strlen
-.type strlen,%function
-.global open
-.type open,%function
-.global close
-.type close,%function
-.global exit
-.type exit,%function
-.global _start
-strlen:
-    mov r1, r0
-    xor r0, r0
-strlen_1:
-    cmp byte ptr [r1 + r0], 0
-    je strlen_f
-    inc r0
-    jmp strlen_1
-strlen_f:
-    ret
-open:
-    mov r7, #5
-    svc #0x80
-    ret
-close:
-    mov r7, #6
-    svc #0x80
-    ud2
-exit:
-    mov r7, #1
-    svc #0x80
-    ud2
-_start:
-    bl main
-    b exit
-#elif defined(__riscv)
-.section .text
-.extern main
-.global strlen
-.global open
-.global close
-.global exit
-.global _start
-strlen:
-    mov a1, a0
-    xor a0, a0
-strlen_1:
-    cmp byte ptr [a1 + a0], 0
-    je strlen_f
-    inc a0
-    jmp strlen_1
-strlen_f:
-    ret
-open:
-    mov a7, #56
-    svc #0x80
-    ret
-close:
-    mov a7, #57
-    svc #0x80
-    ud2
-exit:
-    mov a7, #93
-    svc #0x80
-    ud2
-_start:
-    call main
-    j exit
+    mov accReg, SYS_write
+    mov arg0Reg, 1
+#if defined(__aarch64__)
+    ldr x1, =smsg
+    ldr x2, =smsg_len
+#else
+    lea arg1Reg, smsg
+    mov arg2Reg, smsg_end-smsg
+#endif
+    syscall
+    call progMain
+#if !defined(__aarch64__)
+    mov arg0Reg, accReg
+#endif
+    mov accReg, SYS_exit
+    syscall
+    undefined
+#endif
+.section .data
+smsg:
+    .ascii "Built with MOS by Medatur76\n"
+smsg_end:
+
+#if defined(__aarch64__)
+    smsg_len = smsg_end - smsg
+#else
+    .equ smsg_len, smsg_end - smsg
 #endif
