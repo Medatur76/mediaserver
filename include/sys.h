@@ -73,15 +73,12 @@ static inline int waitthread(fd_t fd) {
 extern int _noStack(1) close(fd_t fd);
 typedef struct _socket {
     fd_t socketFd;
-    struct sockaddr {
-        unsigned short int sa_family;
-        char sa_data[14];
-    } address;
-} socket;
+    void *address;
+} socket_t;
 #endif
 extern _noStack(1) void *malloc(size_t size);
 //Automatically opens and listens to a TCP socket at 127.0.0.1:port. Max 50 connections
-extern _noStack(1) socket opensocket(__UINT16_TYPE__ port);
-extern _noStack(1) fd_t accept(socket);
+extern _noStack(1) socket_t opensocket(__UINT16_TYPE__ port);
+extern _noStack(1) fd_t accept(socket_t*);
 
 int main(void);

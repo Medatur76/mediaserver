@@ -7,6 +7,8 @@
 .globl exit
 .globl close
 .globl malloc
+.globl opensocket
+.globl accept
 .globl _start
 #if defined(_WIN32)
 .intel_syntax noprefix
@@ -201,6 +203,7 @@ _start:
 .type _waitpid,%function
 .type close,%function
 .type malloc,%function
+.type opensocket,%function
 #endif
 #if defined(__x86_64__) || defined(__i386__)
 .intel_syntax noprefix
@@ -218,7 +221,6 @@ _start:
 #define zero(x) xor x, x
 #define increment(x) inc x
 #define subtract(x, y) sub x, y
-
 #define SYS_open 2
 #define SYS_write 1
 #define SYS_read 0
@@ -226,8 +228,12 @@ _start:
 #define SYS_wait 61
 #define SYS_close 3
 #define SYS_mmap 9
+#define SYS_socket 41
+#define SYS_setsockopt 54
+#define SYS_bind 49
+#define SYS_listen 50
+#define SYS_accept 43
 #define SYS_exit 60
-
 #define undefined ud2
 #elif defined(__i386__)
 #define accReg eax
@@ -242,7 +248,6 @@ _start:
 #define zero(x) xor x, x
 #define increment(x) inc x
 #define subtract(x, y) sub x, y
-
 #define SYS_open 5
 #define SYS_write 4
 #define SYS_read 3
@@ -251,7 +256,6 @@ _start:
 #define SYS_close 6
 #define SYS_mmap 192
 #define SYS_exit 1
-
 #define syscall int 0x80
 #elif defined(__aarch64__)
 #define accReg x8
@@ -267,7 +271,6 @@ _start:
 #define zero(x) mov x, xzr
 #define increment(x) adds x, x, 1
 #define subtract(x, y) sub x, x, y
-
 #define SYS_open 56
 #define SYS_write 64
 #define SYS_read 63
@@ -276,7 +279,6 @@ _start:
 #define SYS_close 57
 #define SYS_mmap 222
 #define SYS_exit 93
-
 #define ud2 udf #0
 #define syscall svc #0
 #elif defined(__arm__)
@@ -293,7 +295,6 @@ _start:
 #define zero(x) mov x, #0
 #define increment(x) add x, x, #1
 #define subtract(x, y) sub x, x, y
-
 #define SYS_open #5
 #define SYS_write #4
 #define SYS_read #3
@@ -302,7 +303,6 @@ _start:
 #define SYS_close #6
 #define SYS_mmap #192
 #define SYS_exit #1
-
 #define ud2 udf #0
 #define syscall svc #0
 #define ret bx lr
@@ -449,6 +449,62 @@ malloc:
     pop arg0Reg
 #endif
     ret
+//I wrote this all myself, I am god
+opensocket:
+    //arg0Reg has the port
+    push arg0Reg
+    //port is now on the stack
+    mov arg0Reg, 2
+    mov arg1Reg, 1
+    //can also be 0
+    mov arg2Reg, 6
+    mov accReg, SYS_socket
+    syscall
+    mov arg0Reg, accReg
+    mov arg1Reg, 1
+    mov arg2Reg, 2
+    push 1
+    mov arg3Reg, rsp
+    mov arg4Reg, 4
+    mov accReg, SYS_setsockopt
+    syscall
+    pop accReg
+    push arg0Reg
+    //error check
+    mov arg0Reg, 16
+    call malloc
+    pop arg0Reg
+    pop arg2Reg
+    mov word ptr [accReg], 2
+    //except for this one line which is ai sadly
+    xchg dl, dh
+    mov word ptr [accReg+2], dx
+    mov dword ptr [accReg+4], 0
+    mov qword ptr [accReg+8], 0
+    mov arg1Reg, accReg
+    mov arg2Reg, 16
+    mov accReg, SYS_bind
+    syscall
+    push arg1Reg
+    //error check
+    mov arg1Reg, 50
+    mov accReg, SYS_listen
+    syscall
+    //error check
+    mov accReg, arg0Reg
+    pop arg2Reg
+    ret
+accept:
+    mov accReg, arg0Reg
+    zero(arg0Reg)
+    mov arg0Reg, qword ptr [accReg]
+    mov arg1Reg, qword ptr [accReg+8]
+    push 16
+    mov arg2Reg, rsp
+    mov accReg, SYS_accept
+    syscall
+    pop arg2Reg
+    ret
 exit:
 #if defined(__i386__)
     mov arg0Reg, accReg
@@ -458,11 +514,12 @@ exit:
     ud2
 _start:
     mov accReg, SYS_write
-    mov arg0Reg, #1
 #if defined(__aarch64__) || defined(__arm__)
+    mov arg0Reg, #1
     ldr arg1Reg, =smsg
     ldr arg2Reg, =smsg_len
 #else
+    mov arg0Reg, 1
     lea arg1Reg, smsg
     mov arg2Reg, smsg_end-smsg
 #endif
