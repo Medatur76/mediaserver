@@ -213,8 +213,6 @@ _start:
 #define arg3Reg r10
 #define arg4Reg r8
 #define arg5Reg r9
-#define stackReg rsp
-#define baseReg rbp
 #define jump jmp
 #define jumpEquals je
 #define zero(x) xor x, x
@@ -239,8 +237,6 @@ _start:
 #define arg3Reg esi
 #define arg4Reg edi
 #define arg5Reg ebp
-#define stackReg esp
-#define baseReg ebp
 #define jump jmp
 #define jumpEquals je
 #define zero(x) xor x, x
@@ -256,7 +252,6 @@ _start:
 #define SYS_mmap 192
 #define SYS_exit 1
 
-#define undefined ud2
 #define syscall int 0x80
 #elif defined(__aarch64__)
 #define accReg x8
@@ -266,8 +261,6 @@ _start:
 #define arg3Reg x3
 #define arg4Reg x4
 #define arg5Reg x5
-#define stackReg sp
-#define baseReg x29
 #define jump b
 #define call bl
 #define jumpEquals b.eq
@@ -279,15 +272,40 @@ _start:
 #define SYS_write 64
 #define SYS_read 63
 #define SYS_fork 220
-#define SYS_wait 95
+#define SYS_wait 260
 #define SYS_close 57
 #define SYS_mmap 222
 #define SYS_exit 93
 
-#define undefined udf #0
+#define ud2 udf #0
 #define syscall svc #0
 #elif defined(__arm__)
-#elif defined(__riscv)
+#define accReg r7
+#define arg0Reg r0
+#define arg1Reg r1
+#define arg2Reg r2
+#define arg3Reg r3
+#define arg4Reg r4
+#define arg5Reg r5
+#define jump b
+#define call bl
+#define jumpEquals beq
+#define zero(x) mov x, #0
+#define increment(x) add x, x, #1
+#define subtract(x, y) sub x, x, y
+
+#define SYS_open #5
+#define SYS_write #4
+#define SYS_read #3
+#define SYS_fork #2
+#define SYS_wait #114
+#define SYS_close #6
+#define SYS_mmap #192
+#define SYS_exit #1
+
+#define ud2 udf #0
+#define syscall svc #0
+#define ret bx lr
 #endif
 strlen:
 #if defined(__i386__)
@@ -296,8 +314,11 @@ strlen:
 #endif
     zero(accReg)
 strlen_1:
-#if defined(__aarch64__)
-    ldrb w2, [x0, x8]
+#if defined(__aarch64__) || defined(__arm__)
+#if defined(__arm__)
+#define w2 r2
+#endif
+    ldrb w2, [arg0Reg, accReg]
     cmp w2, #0
 #else
     cmp byte ptr [arg0Reg + accReg], 0
@@ -306,8 +327,8 @@ strlen_1:
     increment(accReg)
     jump strlen_1
 strlen_f:
-#if defined(__aarch64__)
-    mov x0, x8
+#if defined(__aarch64__) || defined(__arm__)
+    mov arg0Reg, accReg
 #elif defined(__i386__)
     pop arg0Reg
 #endif
@@ -382,12 +403,7 @@ _waitpid:
     //This need to be review because I never use &out
     zero(arg3Reg)
     zero(arg1Reg)
-#if defined(__aarch64__)
-    mov arg1Reg, arg0Reg
-    zero(arg0Reg)
-    zero(arg4Reg)
-    mov arg3Reg, 4
-#elif defined(__i386__)
+#if defined(__i386__)
     mov arg0Reg, accReg
 #endif
     zero(arg2Reg)
@@ -416,10 +432,17 @@ malloc:
     mov arg1Reg, arg0Reg
 #endif
     zero(arg0Reg)
+#if defined(__arm__)
+    mov arg2Reg, #0x03
+    mov arg3Reg, #0x21
+    mov arg4Reg, #-1
+    mov arg5Reg, #0
+#else
     mov arg2Reg, 0x03
     mov arg3Reg, 0x21
     mov arg4Reg, -1
     mov arg5Reg, 0
+#endif
     mov accReg, SYS_mmap
     syscall
 #if defined(__i386__)
@@ -432,25 +455,25 @@ exit:
 #endif
     mov accReg, SYS_exit
     syscall
-    undefined
+    ud2
 _start:
     mov accReg, SYS_write
-    mov arg0Reg, 1
-#if defined(__aarch64__)
-    ldr x1, =smsg
-    ldr x2, =smsg_len
+    mov arg0Reg, #1
+#if defined(__aarch64__) || defined(__arm__)
+    ldr arg1Reg, =smsg
+    ldr arg2Reg, =smsg_len
 #else
     lea arg1Reg, smsg
     mov arg2Reg, smsg_end-smsg
 #endif
     syscall
     call progMain
-#if !defined(__aarch64__)
+#if !defined(__aarch64__) && !defined(__arm__)
     mov arg0Reg, accReg
 #endif
     mov accReg, SYS_exit
     syscall
-    undefined
+    ud2
 #endif
 .section .data
 smsg:
