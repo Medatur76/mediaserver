@@ -15,6 +15,7 @@ typedef __INTPTR_TYPE__ ssize_t;
 //TODO Force __stdcall on Win32 systems (not Win64)
 typedef __INT32_TYPE__ (*ThreadFunc)(void*);
 extern _noStack(1) size_t strlen(const char *str);
+extern _noStack(2) char *strcpy(char *ptr, const char *str);
 extern __attribute__((noreturn)) _noStack(1) void exit(int status);
 #ifdef _WIN32
 typedef unsigned long int flag_t;
@@ -75,10 +76,12 @@ typedef struct _socket {
     fd_t socketFd;
     void *address;
 } socket_t;
-#endif
 extern _noStack(1) void *malloc(size_t size);
+extern _noStack(3) void *realloc(void *ptr, size_t old_size, size_t new_size);
+extern _noStack(2) void free(void *ptr, size_t size);
 //Automatically opens and listens to a TCP socket at 127.0.0.1:port. Max 50 connections
 extern _noStack(1) socket_t opensocket(__UINT16_TYPE__ port);
 extern _noStack(1) fd_t accept(socket_t*);
 
 int main(void);
+#endif

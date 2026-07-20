@@ -1,12 +1,16 @@
 //TODO
 //strlen can be optimized apparently
+//Add mkdir
 .section .text
 .extern progMain
 .globl strlen
+.globl strcpy
 .globl _open
 .globl exit
 .globl close
 .globl malloc
+.globl realloc
+.globl free
 .globl opensocket
 .globl accept
 .globl _start
@@ -19,8 +23,10 @@
 .extern CreateThread
 .extern WaitForSingleObject
 .extern CloseHandle
+.extern GetProcessHeap
+.extern HeapAlloc
 .extern ExitProcess
-.global __main
+.globl __main
 .globl _write
 .globl _read
 .globl thread
@@ -228,6 +234,8 @@ _start:
 #define SYS_wait 61
 #define SYS_close 3
 #define SYS_mmap 9
+#define SYS_mremap 25
+#define SYS_munmap 11
 #define SYS_socket 41
 #define SYS_setsockopt 54
 #define SYS_bind 49
@@ -332,6 +340,13 @@ strlen_f:
 #elif defined(__i386__)
     pop arg0Reg
 #endif
+    ret
+strcpy:
+    mov accReg, arg0Reg
+strcpy_1:
+    movsb
+    cmp byte ptr [arg1Reg], 0
+    jne strcpy_1
     ret
 _open:
 #if defined(__aarch64__)
@@ -449,6 +464,15 @@ malloc:
     pop arg0Reg
 #endif
     ret
+realloc:
+    mov arg3Reg, 1
+    mov accReg, SYS_mremap
+    syscall
+    ret
+free:
+    mov accReg, SYS_munmap
+    syscall
+    ret
 //I wrote this all myself, I am god
 opensocket:
     //arg0Reg has the port
@@ -534,7 +558,7 @@ _start:
 #endif
 .section .data
 smsg:
-    .ascii "Built with MOS by Medatur76\n"
+    .ascii "Built with MOSL by Medatur76\n"
 smsg_end:
 #if defined(__aarch64__)
     smsg_len = smsg_end - smsg
