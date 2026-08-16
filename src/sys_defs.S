@@ -159,10 +159,10 @@ waitthread:
 #ifdef SOCKET
 opensocket:
 #if defined(_WIN64)
-    mov rbx, rdx
+    mov r15, rdx
     mov r14, rcx
 #else
-    mov rbx, rcx
+    mov r15, rcx
 #endif
     sub rsp, 40
     mov rcx, 2
@@ -191,7 +191,7 @@ opensocket:
     mov rcx, 16
     call malloc
     //malloc(16)
-    mov rdx, rbx
+    mov rdx, r15
     mov word ptr [rax], 2
     xchg dl, dh
     mov word ptr [rax+2], dx
@@ -237,17 +237,17 @@ opensocket_error:
     //exit(WSAGetLastError())
 acceptConnection:
 #if defined(_WIN64)
-    mov rbx, rdx
+    mov r15, rdx
     mov r14, rcx
 #else
-    mov rbx, rcx
+    mov r15, rcx
 #endif
     mov rcx, 16
     call malloc
     mov r13, rax
     //malloc(16)
     sub rsp, 40
-    mov rcx, qword ptr [rbx]
+    mov rcx, qword ptr [r15]
     mov rdx, r13
     mov dword ptr [rsp + 32], 16
     lea r8, [rsp + 32]
