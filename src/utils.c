@@ -27,7 +27,7 @@ int strcmp(const char *a, const char *b) {
 }
 
 //TODO add error checking
-int writeHex(fd_t clientFd, int a) {
+int writeHex(socket_t *client, int a) {
     size_t size = 1;
     char *out = malloc(size);
     do {
@@ -36,7 +36,7 @@ int writeHex(fd_t clientFd, int a) {
         out = realloc(out, size++, size);
         a = (a - (a % 16)) / 16;
     } while (a > 0);
-    for (int i = size - 2; i >= 0; i--) write(clientFd, out + i, 1);
-    write(clientFd, "\r\n", 2);
+    for (int i = size - 2; i >= 0; i--) writeSocket(client, out + i, 1);
+    writeSocket(client, "\r\n", 2);
     return 0;
 }

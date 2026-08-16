@@ -20,15 +20,15 @@ simply install ``GNU GCC`` and run the script file for your system (``.bat`` for
 
 ## Features
 
-- [ ] Single executable
+- [X] Single executable
   - Just run the program file for your system/architecture and the program will automatically setup its default state in the current folder!
 - [ ] 2FA support
   - By default, the program locks any access to the website behind a 2FA check for security purposes.
   - Easially scanable QR code in the terminal to get your 2FA setup.
   - This is 100% optional. You can go into the configuration file and disable this to open the site to anyone!
   - (Username/password support comming soon!)
-- [ ] Custom port
-  - By default the program uses port ``8080`` but it can be configured to use any port ``0``-``1024``.
+- [X] Custom port
+  - By default the program uses port ``8080`` but it can be configured to use any port ``0``-``49151``.
 - [ ] Supports multiple forms of media
   - After installation, simply navigate to ``127.0.0.1:8080/..``, and drag and drop all the files you want. Video, audio and image are all supported!
   - For added detail to your files, navigate instead to ``127.0.0.1:8080/..``, and fill out information about the files that will show up when searching for and viewing the file later on!
@@ -36,3 +36,19 @@ simply install ``GNU GCC`` and run the script file for your system (``.bat`` for
   - Should FFmpeg be installed on your machine, the program will automatically format inputted files to the most efficent form for web viewing.
 - [X] Customizability
   - By opening the ``web`` folder, you can customize every aspect of the site you see from the website!
+
+## Installation
+
+To install the server you can do one of the following:
+
+- Download the prebuilt executable:
+  1. Download the executable from the releases tab that matches your system
+  2. Move the executable to a separate folder and run it
+- Build it yourself:
+  1. Clone this respository
+  2. Ensure you have ``GNU GCC`` installed for your system
+  3. Run the script file for your system (``.bat`` for windows and ``.sh`` for linux)
+  4. Find the executable in ``bin`` and move it to a separate folder
+  5. Run it
+
+Very simple and easy installation for both developers and people who just want something that works fast!

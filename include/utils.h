@@ -4,5 +4,5 @@
 int min(int, int);
 int max(int, int);
 int strcmp(const char *, const char *);
-int writeHex(fd_t, int);
+int writeHex(socket_t *, int);
 #endif

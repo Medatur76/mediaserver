@@ -7,12 +7,12 @@
 .globl strcpy
 .globl _open
 .globl exit
-.globl close
 .globl malloc
 .globl realloc
 .globl free
 .globl opensocket
-.globl accept
+.globl acceptConnection
+.globl checkDir
 .globl _start
 #if defined(_WIN32)
 .intel_syntax noprefix
@@ -25,10 +25,26 @@
 .extern CloseHandle
 .extern GetProcessHeap
 .extern HeapAlloc
+.extern HeapReAlloc
+.extern HeapFree
+.extern CreateDirectoryW
 .extern ExitProcess
+.extern socket
+.extern setsockopt
+.extern bind
+.extern listen
+.extern accept
+.extern closesocket
+.extern WSACleanup
+.extern WSAGetLastError
 .globl __main
 .globl _write
 .globl _read
+.globl _mkdir
+.globl readSocket
+.globl writeSocket
+.globl closeSocket
+.globl closeFd
 .globl thread
 .globl waitthread
 __main:
@@ -89,6 +105,7 @@ _write:
     jne _write_1
     mov rcx, -11
     sub rsp, 40
+    //Stack saving for prev params?
     call GetStdHandle
     add rsp, 40
     mov rcx, rax
@@ -103,7 +120,7 @@ _write_1:
     mov rcx, rax
 _write_f:
     sub rsp, 40
-    mov dword ptr [rsp + 32], 0x00
+    mov qword ptr [rsp + 32], 0x00
     call WriteFile
     add rsp, 40
     ret
@@ -112,6 +129,7 @@ _read:
     jnz _read_f
     mov ecx, -10
     sub rsp, 40
+    //Stack saving for prev params?
     call GetStdHandle
     add rsp, 40
     mov rcx, rax
@@ -138,28 +156,138 @@ waitthread:
     call WaitForSingleObject
     add rsp, 32
     ret
-/*opensocket:
-    sub rsp, 32
+#ifdef SOCKET
+opensocket:
+#if defined(_WIN64)
+    mov rbx, rdx
+    mov r14, rcx
+#else
+    mov rbx, rcx
+#endif
+    sub rsp, 40
     mov rcx, 2
-    mov rdi, 1
+    mov rdx, 1
     mov r8, 6
     call socket
-    add rsp, 32
-    mov r10, rax
-    //error check
-    sub rsp, 40
-    mov rcx, rax
-    mov rdi, 0xFFFF
-    mov r8, 4
-    mov qword ptr [rsp + 32], 0x04
-    mov qword ptr [rsp + 40], 0x01
-    mov r9, [rsp + 40]
-    call setsockopt
     add rsp, 40
-    //error check
-    sub rsp, 32
-    mov rcx, r10*/
-close:
+    //socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
+    mov r12, rax
+    cmp r12, -1
+    je opensocket_error
+    //if (retVal == -1) exit(WSAGetLastError())
+    sub rsp, 48
+    mov rcx, r12
+    mov rdx, 0xFFFF
+    mov r8, 4
+    mov dword ptr [rsp + 32], 0x04
+    mov dword ptr [rsp + 40], 0x01
+    lea r9, [rsp + 40]
+    call setsockopt
+    add rsp, 48
+    //setsockopt(socket(...), SOL_SOCKET, SO_REUSEADDR, (int *)1, 4)
+    cmp rax, -1
+    je opensocket_error
+    //if (retVal == -1) exit(WSAGetLastError())
+    mov rcx, 16
+    call malloc
+    //malloc(16)
+    mov rdx, rbx
+    mov word ptr [rax], 2
+    xchg dl, dh
+    mov word ptr [rax+2], dx
+    mov dword ptr [rax+4], 0
+    mov qword ptr [rax+8], 0
+    //struct sockaddr
+    mov r13, rax
+    sub rsp, 40
+    mov rcx, r12
+    mov rdx, r13
+    mov r8, 16
+    call bind
+    add rsp, 40
+    //bind(socket(...), malloc(...), 16)
+    test rax, rax
+    jnz opensocket_error
+    //if (!retVal) exit(WSAGetLastError())
+    sub rsp, 40
+    mov rcx, r12
+    mov rdx, 50
+    call listen
+    add rsp, 40
+    //listen(socket(...), 50)
+    test rax, rax
+    jnz opensocket_error
+    //if (!retVal) exit(WSAGetLastError())
+#if defined(_WIN64)
+    mov rax, r14
+#else
+    mov rcx, 16
+    call malloc
+    //malloc(16)
+#endif
+    mov qword ptr [rax], r12
+    mov qword ptr [rax + 8], r13
+    //struct _socket
+    //I think????
+    ret
+opensocket_error:
+    call WSAGetLastError
+    mov rcx, rax
+    jmp exit
+    //exit(WSAGetLastError())
+acceptConnection:
+#if defined(_WIN64)
+    mov rbx, rdx
+    mov r14, rcx
+#else
+    mov rbx, rcx
+#endif
+    mov rcx, 16
+    call malloc
+    mov r13, rax
+    //malloc(16)
+    sub rsp, 40
+    mov rcx, qword ptr [rbx]
+    mov rdx, r13
+    mov dword ptr [rsp + 32], 16
+    lea r8, [rsp + 32]
+    call accept
+    add rsp, 40
+    mov r12, rax
+#if defined(_WIN64)
+    mov rax, r14
+#else
+    mov rcx, 16
+    call malloc
+    //malloc(16)
+#endif
+    mov qword ptr [rax], r12
+    mov qword ptr [rax + 8], r13
+    //struct _socket
+    //I think????
+    ret
+readSocket:
+    sub rsp, 40
+    mov rcx, qword ptr [rcx]
+    xor r9, r9
+    call recv
+    add rsp, 40
+    ret
+writeSocket:
+    sub rsp, 40
+    mov rcx, qword ptr [rcx]
+    xor r9, r9
+    call send
+    add rsp, 40
+    ret
+closeSocket:
+    sub rsp, 40
+    mov rcx, qword ptr [rcx]
+    call closesocket
+    add rsp, 40
+    ret
+#endif
+closeFd:
     sub rsp, 40
     call CloseHandle
     add rsp, 40
@@ -176,11 +304,51 @@ malloc:
     sub rsp, 32
     mov r8, rcx
     mov rcx, rax
-    xor rdx, rdx
+    mov rdx, 8
     call HeapAlloc
     add rsp, 32
     ret
+realloc:
+    sub rsp, 32
+    call GetProcessHeap
+    add rsp, 32
+    //error check
+    sub rsp, 32
+    mov r9, r8
+    mov r8, rcx
+    xor rdx, rdx
+    mov rcx, rax
+    call HeapReAlloc
+    add rsp, 32
+    ret
+free:
+    sub rsp, 32
+    call GetProcessHeap
+    add rsp, 32
+    //error check
+    sub rsp, 32
+    xor rdx, rdx
+    mov r8, rcx
+    mov rcx, rax
+    call HeapFree
+    add rsp, 32
+    ret
+_mkdir:
+    sub rsp, 40
+    //Thow away sec attrib for now
+    xor rdx, rdx
+    call CreateDirectoryW
+    add rsp, 40
+    ret
 exit:
+#ifdef SOCKET
+    mov rbx, rcx
+    sub rsp, 40
+    call WSACleanup
+    add rsp, 40
+    //WSACleanup()
+    mov rcx, rbx
+#endif
     jmp ExitProcess
     ud2
 _start:
@@ -189,25 +357,49 @@ _start:
     mov r8, smsg_end - smsg
     xor r9, r9
     call _write
+#ifdef SOCKET
+    mov rcx, 408
+    call malloc
+    //malloc(408)
+    mov r12, rax
+    sub rsp, 40
+    mov rcx, 0x0202
+    mov rdx, rax
+    call WSAStartup
+    add rsp, 40
+    //WSAStartup(2.2, malloc(...))
+    test rax, rax
+    jz _start_1
+    call WSAGetLastError
+    mov rcx, rax
+    jmp exit
+    //if (!retVal) exit(WSAGetLastError())
+_start_1:
+    mov rcx, r12
+    call free
+    //free(malloc(...))
+#endif
     sub rsp, 40
     call progMain
     add rsp, 40
     mov rcx, rax
     jmp exit
 #else
-.globl write
-.globl read
+.globl _close
+.globl writeFd
+.globl readFd
 .globl _fork
 .globl _waitpid
+.globl mkdir
 #if defined(__arm__) || defined(__aarch64__)
 .type strlen,%function
 .type exit,%function
 .type _open,%function
-.type write,%function
-.type read,%function
+.type writeFd,%function
+.type readFd,%function
 .type _fork,%function
 .type _waitpid,%function
-.type close,%function
+.type _close,%function
 .type malloc,%function
 .type opensocket,%function
 #endif
@@ -241,6 +433,7 @@ _start:
 #define SYS_bind 49
 #define SYS_listen 50
 #define SYS_accept 43
+#define SYS_mkdir 83
 #define SYS_exit 60
 #define undefined ud2
 #elif defined(__i386__)
@@ -367,7 +560,7 @@ _open:
     pop arg0Reg
 #endif
     ret
-write:
+writeFd:
 #if defined(__i386__)
     push arg0Reg
     mov arg0Reg, arg1Reg
@@ -381,7 +574,7 @@ write:
     pop arg0Reg
 #endif
     ret
-read:
+readFd:
 #if defined(__i386__)
     push arg0Reg
     mov arg0Reg, arg1Reg
@@ -428,7 +621,7 @@ _waitpid:
     pop arg0Reg
 #endif
     ret
-close:
+_close:
 #if defined(__i386__)
     push arg0Reg
     mov arg0Reg, accReg
@@ -473,7 +666,7 @@ free:
     mov accReg, SYS_munmap
     syscall
     ret
-//I wrote this all myself, I am god
+//I wrote this all myself in 5 minutes, I am god
 opensocket:
     //arg0Reg has the port
     push arg0Reg
@@ -518,7 +711,7 @@ opensocket:
     mov accReg, arg0Reg
     pop arg2Reg
     ret
-accept:
+acceptConnection:
     mov accReg, arg0Reg
     zero(arg0Reg)
     mov arg0Reg, qword ptr [accReg]
@@ -528,6 +721,10 @@ accept:
     mov accReg, SYS_accept
     syscall
     pop arg2Reg
+    ret
+mkdir:
+    mov accReg, SYS_mkdir
+    syscall
     ret
 exit:
 #if defined(__i386__)
