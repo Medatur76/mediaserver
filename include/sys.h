@@ -79,8 +79,7 @@ static inline int waitthread(fd_t fd) {
     return out;
 }
 extern _noStack(2) int mkdir(const char *path, int umode);
-extern int _noStack(1) _close(fd_t fd);
-#define closeFd(x) _close(x)
+extern int _noStack(1) closeFd(fd_t fd);
 #endif
 extern _noStack(1) void *malloc(size_t size);
 extern _noStack(3) void *realloc(void *ptr, size_t old_size, size_t new_size);
@@ -89,12 +88,10 @@ extern _noStack(2) int free(void *ptr, size_t size);
 typedef struct _socket {
     fd_t socketHandle;
     struct _sockaddr {
-        short   sin_family;
-        unsigned short sin_port;
-        struct  _in_addr {
-            __UINT32_TYPE__ s_addr;
-        } sin_addr;
-        char    sin_zero[8];
+        short family;
+        unsigned short port;
+        __UINT32_TYPE__ ip;
+        char zero[8];
     } *address;
 } socket_t;
 //Automatically opens and listens to a TCP socket at 127.0.0.1:port. Max 50 connections
@@ -107,7 +104,7 @@ extern int closeSocket(socket_t*);
 #else
 #define readSocket(x, y, z) readFd((x)->socketHandle, y, z)
 #define writeSocket(x, y, z) writeFd((x)->socketHandle, y, z)
-#define closeSocket(x) _close((x)->socketHandle)
+#define closeSocket(x) closeFd((x)->socketHandle)
 #endif
 #endif
 

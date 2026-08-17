@@ -1,6 +1,6 @@
+//NEVER TOUCH RBX
 //TODO
 //strlen can be optimized apparently
-//Add mkdir
 .section .text
 .extern progMain
 .globl strlen
@@ -385,7 +385,7 @@ _start_1:
     mov rcx, rax
     jmp exit
 #else
-.globl _close
+.globl closeFd
 .globl writeFd
 .globl readFd
 .globl _fork
@@ -399,7 +399,7 @@ _start_1:
 .type readFd,%function
 .type _fork,%function
 .type _waitpid,%function
-.type _close,%function
+.type closeFd,%function
 .type malloc,%function
 .type opensocket,%function
 #endif
@@ -621,7 +621,7 @@ _waitpid:
     pop arg0Reg
 #endif
     ret
-_close:
+closeFd:
 #if defined(__i386__)
     push arg0Reg
     mov arg0Reg, accReg
@@ -712,15 +712,19 @@ opensocket:
     pop arg2Reg
     ret
 acceptConnection:
-    mov accReg, arg0Reg
-    zero(arg0Reg)
+    push arg0Reg
+    mov arg0Reg, 16
+    call malloc
+    mov arg1Reg, accReg
+    pop accReg
     mov arg0Reg, qword ptr [accReg]
-    mov arg1Reg, qword ptr [accReg+8]
     push 16
     mov arg2Reg, rsp
     mov accReg, SYS_accept
     syscall
     pop arg2Reg
+    mov accReg, arg0Reg
+    mov arg2Reg, arg1Reg
     ret
 mkdir:
     mov accReg, SYS_mkdir

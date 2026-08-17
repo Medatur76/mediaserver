@@ -5,7 +5,7 @@ int clientHandler(void *param) {
 
     writeFd(1, "Connection from: ", 17);
     for (int i = 0; i < 4; i++) {
-        int n = (client->address->sin_addr.s_addr >> (i * 8)) & 0xFF;
+        int n = (client->address->ip >> (i * 8)) & 0xFF;
         char buf[3];
         int len = 0;
         do {
@@ -22,7 +22,11 @@ int clientHandler(void *param) {
         }
     }
 
+    writeSocket(client, "HTTP/1.1 404 Not Found\r\n\r\n404", 29);
+
     closeSocket(client);
+
+    writeFd(1, "Closing connection\n", 19);
     return 0;
 }
 
@@ -34,7 +38,7 @@ int consoleWatcher(void *param) {
             break;
         }
     }
-    writeFd(1, "Exiting\n", 8);
+    writeFd(1, "Exit command registered\n", 24);
     return 0;
 }
 
@@ -52,6 +56,8 @@ int main(void) {
         
         thread(clientHandler, (void *)&client);
     }
+
+    writeFd(1, "Exiting\n", 8);
 
     waitthread(watcher);
     closeSocket(&server);

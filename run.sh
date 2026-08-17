@@ -6,6 +6,6 @@ gcc src/sys_defs.S src/*.c main.c -I./include -o bin/program -DCOMPRESSED -DSOCK
 
 chmod +x ./bin/program
 
-#./bin/program
+./bin/program
 
-#echo $?
+echo $?
