@@ -50,6 +50,7 @@ static inline __attribute__((always_inline, gnu_inline)) int mkdir(const char *p
     return _mkdir(wpath, umode);
 }
 extern int _noStack(1) closeFd(fd_t fd);
+//Windows will NOT wait for any child threads to exit before shutting down the parent without explicitly telling it to
 extern fd_t thread(ThreadFunc, void *param);
 extern signed int waitthread(fd_t thread);
 #else

@@ -723,7 +723,6 @@ acceptConnection:
     mov accReg, SYS_accept
     syscall
     pop arg2Reg
-    mov accReg, arg0Reg
     mov arg2Reg, arg1Reg
     ret
 mkdir:

@@ -22,7 +22,7 @@ int clientHandler(void *param) {
         }
     }
 
-    writeSocket(client, "HTTP/1.1 404 Not Found\r\n\r\n404", 29);
+    writeSocket(client, "HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\n404", 48);
 
     closeSocket(client);
 
@@ -53,7 +53,8 @@ int main(void) {
     writeFd(1, "Listening\n", 10);
     while (*running) {
         socket_t client = acceptConnection(&server);
-        
+        //At some point I need to add some kind of child process tracker to the _start and thread function to keep track of how many children are running and wait until they finish to shut down the parent
+        //Or some other low memory solution
         thread(clientHandler, (void *)&client);
     }
 
